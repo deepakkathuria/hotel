@@ -34,25 +34,24 @@ app.listen(PORT, () => {
 });
 
 
+app.get("/", (req, res) => {
+  res.send("✅ Hotel Booking API is running!");
+});
 
 app.post("/search-rooms", async (req, res) => {
   const { checkin, checkout } = req.body;
 
-  try {
-    const [rooms] = await userDBPool.query(
-      `SELECT * FROM rooms WHERE id NOT IN (
-        SELECT room_id FROM bookings
-        WHERE (checkin <= ? AND checkout >= ?)
-      )`,
-      [checkout, checkin]
-    );
+  const [rooms] = await userDBPool.query(
+    `SELECT * FROM rooms WHERE id NOT IN (
+      SELECT room_id FROM bookings
+      WHERE (checkin <= ? AND checkout >= ?)
+    )`,
+    [checkout, checkin]
+  );
 
-    res.status(200).json({ availableRooms: rooms });
-  } catch (error) {
-    console.error("Room fetch error:", error);
-    res.status(500).json({ error: "Something went wrong" });
-  }
+  res.status(200).json({ availableRooms: rooms });
 });
+
 
 
 
@@ -137,10 +136,78 @@ app.get("/booking-summary/:bookingId", async (req, res) => {
 
 app.get("/available-room-types", async (req, res) => {
   try {
-    const [rooms] = await userDBPool.query(`SELECT * FROM rooms ORDER BY id`);
-    res.status(200).json({ rooms });
+    const [rows] = await userDBPool.query(`SELECT * FROM rooms ORDER BY id`);
+
+    const formattedRooms = rows.map((room) => {
+      let addons = [];
+      try {
+        addons = typeof room.addons === "string"
+          ? JSON.parse(room.addons)
+          : room.addons;
+      } catch (e) {
+        addons = [];
+      }
+
+      return {
+        ...room,
+        addons,
+      };
+    });
+
+    res.status(200).json({
+      status: 200,
+      message: "Room types fetched successfully",
+      rooms: formattedRooms,
+    });
   } catch (error) {
-    console.error("Error fetching room types:", error);
-    res.status(500).json({ error: "Unable to fetch room types" });
+    console.error("❌ Error fetching room types:", error);
+    res.status(500).json({ status: 500, error: "Unable to fetch room types" });
+  }
+});
+
+
+
+
+
+app.post("/available-room-types/by-date", async (req, res) => {
+  try {
+    const { checkin, checkout } = req.body;
+
+    if (!checkin || !checkout) {
+      return res.status(400).json({ status: 400, error: "Checkin and checkout dates are required" });
+    }
+
+    const [rows] = await userDBPool.query(
+      `SELECT * FROM rooms WHERE id NOT IN (
+         SELECT room_id FROM bookings
+         WHERE (checkin < ? AND checkout > ?)
+       ) ORDER BY id`,
+      [checkout, checkin]
+    );
+
+    const formattedRooms = rows.map((room) => {
+      let addons = [];
+      try {
+        addons = typeof room.addons === "string"
+          ? JSON.parse(room.addons)
+          : room.addons;
+      } catch (e) {
+        addons = [];
+      }
+
+      return {
+        ...room,
+        addons,
+      };
+    });
+
+    res.status(200).json({
+      status: 200,
+      message: "Available rooms fetched successfully",
+      availableRooms: formattedRooms,
+    });
+  } catch (error) {
+    console.error("❌ Error checking available rooms by date:", error);
+    res.status(500).json({ status: 500, error: "Failed to fetch available rooms" });
   }
 });
