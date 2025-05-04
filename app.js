@@ -6,6 +6,9 @@ const axios = require("axios");
 const bcrypt = require("bcrypt");
 const { userDBPool } = require("./config/db");
 
+const moment = require('moment');
+
+
 // const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 
@@ -209,5 +212,111 @@ app.post("/available-room-types/by-date", async (req, res) => {
   } catch (error) {
     console.error("❌ Error checking available rooms by date:", error);
     res.status(500).json({ status: 500, error: "Failed to fetch available rooms" });
+  }
+});
+
+
+
+app.delete("/rooms/:id", async (req, res) => {
+  const roomId = req.params.id;
+  try {
+    await userDBPool.query("DELETE FROM rooms WHERE id = ?", [roomId]);
+    res.status(200).json({ message: "Room deleted successfully" });
+  } catch (error) {
+    console.error("Delete Room Error:", error);
+    res.status(500).json({ error: "Failed to delete room" });
+  }
+});
+
+
+
+app.put("/rooms/:id", async (req, res) => {
+  const { room_type, base_price, addons } = req.body;
+  const { id } = req.params;
+
+  await userDBPool.query(
+    "UPDATE rooms SET room_type = ?, base_price = ?, addons = ? WHERE id = ?",
+    [room_type, base_price, JSON.stringify(addons), id]
+  );
+
+  res.status(200).json({ message: "Room updated successfully" });
+});
+
+
+
+app.post("/rooms", async (req, res) => {
+  try {
+    const { room_type, base_price, addons } = req.body;
+    await userDBPool.query(
+      `INSERT INTO rooms (room_type, base_price, addons) VALUES (?, ?, ?)`,
+      [room_type, base_price, JSON.stringify(addons || [])]
+    );
+    res.status(201).json({ message: "Room added successfully" });
+  } catch (error) {
+    console.error("Create room error:", error);
+    res.status(500).json({ error: "Failed to create room" });
+  }
+});
+
+
+
+app.get("/rooms/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [rows] = await userDBPool.query(`SELECT * FROM rooms WHERE id = ?`, [id]);
+    if (!rows.length) return res.status(404).json({ error: "Room not found" });
+
+    const room = rows[0];
+    room.addons = JSON.parse(room.addons || "[]");
+
+    res.status(200).json({ room });
+  } catch (error) {
+    console.error("Fetch room error:", error);
+    res.status(500).json({ error: "Failed to fetch room" });
+  }
+});
+
+
+
+app.get("/bookings", async (req, res) => {
+  try {
+    const [rows] = await userDBPool.query(`SELECT * FROM bookings ORDER BY id DESC`);
+    res.status(200).json({ bookings: rows });
+  } catch (err) {
+    console.error("❌ Fetch bookings error:", err);
+    res.status(500).json({ error: "Failed to fetch bookings" });
+  }
+});
+
+
+
+
+
+
+app.get('/booking-summary-dashboard', async (req, res) => {
+  try {
+    const today = moment().format('YYYY-MM-DD');
+    const tomorrow = moment().add(1, 'day').format('YYYY-MM-DD');
+
+    const [todayBookings] = await userDBPool.query(
+      'SELECT COUNT(*) AS count FROM bookings WHERE DATE(checkin) = ?', [today]
+    );
+
+    const [tomorrowBookings] = await userDBPool.query(
+      'SELECT COUNT(*) AS count FROM bookings WHERE DATE(checkin) = ?', [tomorrow]
+    );
+
+    const [upcomingBookings] = await userDBPool.query(
+      'SELECT COUNT(*) AS count FROM bookings WHERE DATE(checkin) >= ?', [today]
+    );
+
+    res.json({
+      today: todayBookings[0].count,
+      tomorrow: tomorrowBookings[0].count,
+      totalUpcoming: upcomingBookings[0].count
+    });
+  } catch (err) {
+    console.error('📛 Dashboard Booking Error:', err);
+    res.status(500).json({ error: 'Dashboard booking summary failed' });
   }
 });
