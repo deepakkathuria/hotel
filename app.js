@@ -10,11 +10,37 @@ const moment = require('moment');
 
 const app = express();
 app.use(express.json());
+// app.use(cors({
+//   origin: ['https://radharidhani.in'],
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//   credentials: true
+// }));
+
+
+
+// app.use(cors({
+//   origin: ['https://radharidhani.in', 'http://localhost:5173'],
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//   credentials: true
+// }));
+
+const allowedOrigins = ['http://localhost:5173', 'https://radharidhani.in'];
+
 app.use(cors({
-  origin: ['https://radharidhani.in'],
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed from this origin'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
+
+// Also allow preflight requests
+app.options('*', cors());
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
