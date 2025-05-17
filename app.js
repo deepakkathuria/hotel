@@ -18,25 +18,25 @@ app.use(express.json());
 
 
 
-// app.use(cors({
-//   origin: ['https://radharidhani.in', 'http://localhost:5173'],
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//   credentials: true
-// }));
-
-const allowedOrigins = ['http://localhost:5173', 'https://radharidhani.in'];
-
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed from this origin'));
-    }
-  },
+  origin: ['https://radharidhani.in', 'http://localhost:5173'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
+
+// const allowedOrigins = ['http://localhost:5173', 'https://radharidhani.in'];
+
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     if (!origin || allowedOrigins.includes(origin)) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error('CORS not allowed from this origin'));
+//     }
+//   },
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//   credentials: true
+// }));
 
 // Also allow preflight requests
 app.options('*', cors());
