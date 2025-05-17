@@ -22,12 +22,12 @@ app.listen(PORT, () => {
 });
 
 
-app.get("/", (req, res) => {
+app.get("/api", (req, res) => {
   res.send("✅ Hotel Booking API is running!");
 });
 
 
-  app.post("/search-rooms", async (req, res) => {
+  app.post("/api/search-rooms", async (req, res) => {
     const { checkin, checkout, adults, children } = req.body;
 
     if (!checkin || !checkout || adults == null || children == null) {
@@ -59,7 +59,7 @@ app.get("/", (req, res) => {
 
 
 
-app.post("/confirm-booking", async (req, res) => {
+app.post("/api/confirm-booking", async (req, res) => {
   try {
     const {
       checkin,
@@ -137,7 +137,7 @@ app.post("/confirm-booking", async (req, res) => {
 });
 
 
-app.get("/booking-summary/:bookingId", async (req, res) => {
+app.get("/api/booking-summary/:bookingId", async (req, res) => {
   try {
     const bookingId = req.params.bookingId;
 
@@ -164,7 +164,7 @@ app.get("/booking-summary/:bookingId", async (req, res) => {
 
 
 
-app.get("/available-room-types", async (req, res) => {
+app.get("/api/available-room-types", async (req, res) => {
   try {
     const [rows] = await userDBPool.query(`SELECT * FROM rooms ORDER BY id`);
 
@@ -204,7 +204,7 @@ app.get("/available-room-types", async (req, res) => {
 
 
 
-app.post("/available-room-types/by-date", async (req, res) => {
+app.post("/api/available-room-types/by-date", async (req, res) => {
   const { checkin, checkout, adults, children } = req.body;
 
   if (!checkin || !checkout || adults == null || children == null) {
@@ -254,7 +254,7 @@ app.post("/available-room-types/by-date", async (req, res) => {
 
 
 
-app.delete("/rooms/:id", async (req, res) => {
+app.delete("/api/rooms/:id", async (req, res) => {
   const roomId = req.params.id;
   try {
     await userDBPool.query("DELETE FROM rooms WHERE id = ?", [roomId]);
@@ -267,7 +267,7 @@ app.delete("/rooms/:id", async (req, res) => {
 
 
 
-app.put("/rooms/:id", async (req, res) => {
+app.put("/api/rooms/:id", async (req, res) => {
   const { room_type, base_price, addons } = req.body;
   const { id } = req.params;
 
@@ -281,7 +281,7 @@ app.put("/rooms/:id", async (req, res) => {
 
 
 
-app.post("/rooms", async (req, res) => {
+app.post("/api/rooms", async (req, res) => {
   try {
     const { room_type, base_price, addons } = req.body;
     await userDBPool.query(
@@ -297,7 +297,7 @@ app.post("/rooms", async (req, res) => {
 
 
 
-app.get("/rooms/:id", async (req, res) => {
+app.get("/api/rooms/:id", async (req, res) => {
   const { id } = req.params;
   try {
     const [rows] = await userDBPool.query(`SELECT * FROM rooms WHERE id = ?`, [id]);
@@ -315,7 +315,7 @@ app.get("/rooms/:id", async (req, res) => {
 
 
 
-app.get("/bookings", async (req, res) => {
+app.get("/api/bookings", async (req, res) => {
   try {
     const [rows] = await userDBPool.query(`SELECT * FROM bookings ORDER BY id DESC`);
     res.status(200).json({ bookings: rows });
@@ -330,7 +330,7 @@ app.get("/bookings", async (req, res) => {
 
 
 
-app.get('/booking-summary-dashboard', async (req, res) => {
+app.get('/api/booking-summary-dashboard', async (req, res) => {
   try {
     const today = moment().format('YYYY-MM-DD');
     const tomorrow = moment().add(1, 'day').format('YYYY-MM-DD');
