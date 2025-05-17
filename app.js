@@ -8,28 +8,13 @@ const { userDBPool } = require("./config/db");
 
 const moment = require('moment');
 
-
-// const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-
-
-
-
-// const upload = multer({ dest: "uploads/" });
-
-
-
-
-
-
-
-
-
-
-
 const app = express();
 app.use(express.json());
-app.use(cors());
-
+app.use(cors({
+  origin: ['https://radharidhani.in'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
@@ -41,19 +26,35 @@ app.get("/", (req, res) => {
   res.send("✅ Hotel Booking API is running!");
 });
 
-app.post("/search-rooms", async (req, res) => {
-  const { checkin, checkout } = req.body;
 
-  const [rooms] = await userDBPool.query(
-    `SELECT * FROM rooms WHERE id NOT IN (
-      SELECT room_id FROM bookings
-      WHERE (checkin <= ? AND checkout >= ?)
-    )`,
-    [checkout, checkin]
-  );
+  app.post("/search-rooms", async (req, res) => {
+    const { checkin, checkout, adults, children } = req.body;
 
-  res.status(200).json({ availableRooms: rooms });
-});
+    if (!checkin || !checkout || adults == null || children == null) {
+      return res.status(400).json({ error: "Check-in, check-out, adults, and children are required" });
+    }
+
+    try {
+      const [rooms] = await userDBPool.query(
+        `SELECT r.*
+        FROM rooms r
+        WHERE r.max_adults >= ? AND r.max_children >= ?
+        AND (
+          SELECT COUNT(*) FROM bookings b
+          WHERE b.room_id = r.id
+          AND (b.checkin < ? AND b.checkout > ?)
+        ) < r.total_inventory`,
+        [adults, children, checkout, checkin]
+      );
+
+      res.status(200).json({ availableRooms: rooms });
+    } catch (error) {
+      console.error("❌ Search rooms error:", error);
+      res.status(500).json({ error: "Failed to fetch available rooms" });
+    }
+  });
+
+
 
 
 
@@ -77,6 +78,32 @@ app.post("/confirm-booking", async (req, res) => {
       total
     } = req.body;
 
+    // STEP 1: Check overlapping bookings
+    const [booked] = await userDBPool.query(
+      `SELECT COUNT(*) AS count FROM bookings
+       WHERE room_id = ?
+       AND (
+         (checkin < ? AND checkout > ?)
+       )`,
+      [room_id, checkout, checkin]
+    );
+
+    const bookedCount = booked[0]?.count || 0;
+
+    // STEP 2: Get room's total inventory
+    const [roomData] = await userDBPool.query(
+      `SELECT total_inventory FROM rooms WHERE id = ?`,
+      [room_id]
+    );
+
+    const totalInventory = roomData[0]?.total_inventory || 0;
+
+    // STEP 3: Check availability
+    if (bookedCount >= totalInventory) {
+      return res.status(400).json({ error: "Room is not available for the selected dates." });
+    }
+
+    // STEP 4: Proceed with booking
     const query = `
       INSERT INTO bookings (
         checkin, checkout, room_id, adults, children,
@@ -172,28 +199,34 @@ app.get("/available-room-types", async (req, res) => {
 
 
 
+
+
+
+
+
 app.post("/available-room-types/by-date", async (req, res) => {
+  const { checkin, checkout, adults, children } = req.body;
+
+  if (!checkin || !checkout || adults == null || children == null) {
+    return res.status(400).json({ status: 400, error: "Check-in, check-out, adults, and children are required" });
+  }
+
   try {
-    const { checkin, checkout } = req.body;
-
-    if (!checkin || !checkout) {
-      return res.status(400).json({ status: 400, error: "Checkin and checkout dates are required" });
-    }
-
     const [rows] = await userDBPool.query(
-      `SELECT * FROM rooms WHERE id NOT IN (
+      `SELECT * FROM rooms
+       WHERE max_adults >= ? AND max_children >= ?
+       AND id NOT IN (
          SELECT room_id FROM bookings
          WHERE (checkin < ? AND checkout > ?)
-       ) ORDER BY id`,
-      [checkout, checkin]
+       )
+       ORDER BY id`,
+      [adults, children, checkout, checkin]
     );
 
     const formattedRooms = rows.map((room) => {
       let addons = [];
       try {
-        addons = typeof room.addons === "string"
-          ? JSON.parse(room.addons)
-          : room.addons;
+        addons = typeof room.addons === "string" ? JSON.parse(room.addons) : room.addons;
       } catch (e) {
         addons = [];
       }
@@ -214,6 +247,10 @@ app.post("/available-room-types/by-date", async (req, res) => {
     res.status(500).json({ status: 500, error: "Failed to fetch available rooms" });
   }
 });
+
+
+
+
 
 
 
