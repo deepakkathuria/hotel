@@ -10,19 +10,19 @@ const moment = require('moment');
 
 const app = express();
 app.use(express.json());
-// app.use(cors({
-//   origin: ['https://radharidhani.in'],
-//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//   credentials: true
-// }));
-
-
-
 app.use(cors({
-  origin: ['https://radharidhani.in', 'http://localhost:5173'],
+  origin: ['https://radharidhani.in'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
+
+
+
+// app.use(cors({
+//   origin: ['https://radharidhani.in', 'http://localhost:5173'],
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+//   credentials: true
+// }));
 
 // const allowedOrigins = ['http://localhost:5173', 'https://radharidhani.in'];
 
