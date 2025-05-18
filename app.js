@@ -16,7 +16,8 @@ app.use(express.json());
 //   credentials: true
 // }));
 app.use(cors({
-  origin: ['https://radharidhani.in', 'http://localhost:5173'],
+  origin: ['https://radharidhani.in', 'http://localhost:5173','https://hotel-front-bay.vercel.app'], // ✅ Add this
+
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));
