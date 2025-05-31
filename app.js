@@ -16,7 +16,7 @@ app.use(express.json());
 //   credentials: true
 // }));
 app.use(cors({
-  origin: ['https://radharidhani.in', 'http://localhost:5173','https://hotel-front-bay.vercel.app','https://booking.radharidhani.in','http://localhost:3000/','https://admin.radharidhani.in'], // ✅ Add this
+  origin: ['https://radharidhani.in', 'http://localhost:5173','https://hotel-front-bay.vercel.app','https://booking.radharidhani.in','http://localhost:3000/','https://admin.radharidhani.in','http://localhost:5000','http://localhost:3000'], // ✅ Add this
 
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
@@ -259,7 +259,6 @@ app.post("/api/available-room-types/by-date", async (req, res) => {
 
 
 
-
 app.delete("/api/rooms/:id", async (req, res) => {
   const roomId = req.params.id;
   try {
@@ -273,26 +272,75 @@ app.delete("/api/rooms/:id", async (req, res) => {
 
 
 
+// app.delete("/api/rooms/:id", async (req, res) => {
+//   const roomId = req.params.id;
+//   try {
+//     await userDBPool.query("DELETE FROM rooms WHERE id = ?", [roomId]);
+//     res.status(200).json({ message: "Room deleted successfully" });
+//   } catch (error) {
+//     console.error("Delete Room Error:", error);
+//     res.status(500).json({ error: "Failed to delete room" });
+//   }
+// });
+
+
+
+
+
 app.put("/api/rooms/:id", async (req, res) => {
-  const { room_type, base_price, addons } = req.body;
+  const { room_type, base_price, addons, max_adults, max_children, total_inventory } = req.body;
   const { id } = req.params;
 
-  await userDBPool.query(
-    "UPDATE rooms SET room_type = ?, base_price = ?, addons = ? WHERE id = ?",
-    [room_type, base_price, JSON.stringify(addons), id]
-  );
-
-  res.status(200).json({ message: "Room updated successfully" });
+  try {
+    await userDBPool.query(
+      `UPDATE rooms SET room_type = ?, base_price = ?, addons = ?, max_adults = ?, max_children = ?, total_inventory = ? WHERE id = ?`,
+      [room_type, base_price, JSON.stringify(addons), max_adults, max_children, total_inventory, id]
+    );
+    res.status(200).json({ message: "Room updated successfully" });
+  } catch (error) {
+    console.error("Update room error:", error);
+    res.status(500).json({ error: "Failed to update room" });
+  }
 });
 
 
 
+// app.put("/api/rooms/:id", async (req, res) => {
+//   const { room_type, base_price, addons } = req.body;
+//   const { id } = req.params;
+
+//   await userDBPool.query(
+//     "UPDATE rooms SET room_type = ?, base_price = ?, addons = ? WHERE id = ?",
+//     [room_type, base_price, JSON.stringify(addons), id]
+//   );
+
+//   res.status(200).json({ message: "Room updated successfully" });
+// });
+
+
+
+// app.post("/api/rooms", async (req, res) => {
+//   try {
+//     const { room_type, base_price, addons } = req.body;
+//     await userDBPool.query(
+//       `INSERT INTO rooms (room_type, base_price, addons) VALUES (?, ?, ?)`,
+//       [room_type, base_price, JSON.stringify(addons || [])]
+//     );
+//     res.status(201).json({ message: "Room added successfully" });
+//   } catch (error) {
+//     console.error("Create room error:", error);
+//     res.status(500).json({ error: "Failed to create room" });
+//   }
+// });
+
+
 app.post("/api/rooms", async (req, res) => {
   try {
-    const { room_type, base_price, addons } = req.body;
+    const { room_type, base_price, addons, max_adults, max_children, total_inventory } = req.body;
     await userDBPool.query(
-      `INSERT INTO rooms (room_type, base_price, addons) VALUES (?, ?, ?)`,
-      [room_type, base_price, JSON.stringify(addons || [])]
+      `INSERT INTO rooms (room_type, base_price, addons, max_adults, max_children, total_inventory)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [room_type, base_price, JSON.stringify(addons || []), max_adults, max_children, total_inventory]
     );
     res.status(201).json({ message: "Room added successfully" });
   } catch (error) {
@@ -301,6 +349,24 @@ app.post("/api/rooms", async (req, res) => {
   }
 });
 
+
+
+
+// app.get("/api/rooms/:id", async (req, res) => {
+//   const { id } = req.params;
+//   try {
+//     const [rows] = await userDBPool.query(`SELECT * FROM rooms WHERE id = ?`, [id]);
+//     if (!rows.length) return res.status(404).json({ error: "Room not found" });
+
+//     const room = rows[0];
+//     room.addons = JSON.parse(room.addons || "[]");
+
+//     res.status(200).json({ room });
+//   } catch (error) {
+//     console.error("Fetch room error:", error);
+//     res.status(500).json({ error: "Failed to fetch room" });
+//   }
+// });
 
 
 app.get("/api/rooms/:id", async (req, res) => {
@@ -318,6 +384,7 @@ app.get("/api/rooms/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch room" });
   }
 });
+
 
 
 
@@ -361,5 +428,28 @@ app.get('/api/booking-summary-dashboard', async (req, res) => {
   } catch (err) {
     console.error('📛 Dashboard Booking Error:', err);
     res.status(500).json({ error: 'Dashboard booking summary failed' });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+app.get('/api/contact-messages', async (req, res) => {
+  try {
+    const [rows] = await userDBPool.query('SELECT * FROM contact_messages ORDER BY submitted_at DESC');
+    res.status(200).json({ messages: rows });
+  } catch (error) {
+    console.error('Fetch contact messages error:', error);
+    res.status(500).json({ error: 'Failed to fetch contact messages' });
   }
 });
