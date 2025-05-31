@@ -61,6 +61,56 @@ app.get("/api", (req, res) => {
   });
 
 
+  app.post("/api/search-roomsnew", async (req, res) => {
+  const { checkin, checkout, adults, children } = req.body;
+
+  if (!checkin || !checkout || adults == null || children == null) {
+    return res.status(400).json({ error: "Check-in, check-out, adults, and children are required" });
+  }
+
+  try {
+    const [rooms] = await userDBPool.query(
+      `SELECT r.*
+       FROM rooms r
+       WHERE (
+         SELECT COUNT(*) FROM bookings b
+         WHERE b.room_id = r.id
+         AND (b.checkin < ? AND b.checkout > ?)
+       ) < r.total_inventory`,
+      [checkout, checkin]
+    );
+
+    const totalGuests = parseInt(adults) + parseInt(children);
+    const eligibleRooms = [];
+
+    for (const room of rooms) {
+      const capacity = room.max_adults + room.max_children;
+      const requiredRooms = Math.ceil(totalGuests / capacity);
+
+      // Check if enough inventory exists
+      const [bookingCountRows] = await userDBPool.query(
+        `SELECT COUNT(*) AS count FROM bookings
+         WHERE room_id = ? AND (checkin < ? AND checkout > ?)`,
+        [room.id, checkout, checkin]
+      );
+
+      const bookedCount = bookingCountRows[0].count;
+      const available = room.total_inventory - bookedCount;
+
+      if (available >= requiredRooms) {
+        eligibleRooms.push(room);
+      }
+    }
+
+    res.status(200).json({ availableRooms: eligibleRooms });
+  } catch (error) {
+    console.error("❌ Search rooms error:", error);
+    res.status(500).json({ error: "Failed to fetch available rooms" });
+  }
+});
+
+
+
 
 
 
