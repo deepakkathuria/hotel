@@ -420,10 +420,15 @@ app.get('/api/booking-summary-dashboard', async (req, res) => {
       'SELECT COUNT(*) AS count FROM bookings WHERE DATE(checkin) >= ?', [today]
     );
 
+    const [totalBookings] = await userDBPool.query(
+      'SELECT COUNT(*) AS count FROM bookings'
+    );
+
     res.json({
       today: todayBookings[0].count,
       tomorrow: tomorrowBookings[0].count,
-      totalUpcoming: upcomingBookings[0].count
+      totalUpcoming: upcomingBookings[0].count,
+      total: totalBookings[0].count // ✅ New field
     });
   } catch (err) {
     console.error('📛 Dashboard Booking Error:', err);
