@@ -115,6 +115,84 @@ app.get("/api", (req, res) => {
 
 
 
+// app.post("/api/confirm-booking", async (req, res) => {
+//   try {
+//     const {
+//       checkin,
+//       checkout,
+//       room_id,
+//       adults,
+//       children,
+//       full_name,
+//       email,
+//       mobile,
+//       gst_number,
+//       special_request,
+//       addons,
+//       subtotal,
+//       tax,
+//       total
+//     } = req.body;
+
+//     // STEP 1: Check overlapping bookings
+//     const [booked] = await userDBPool.query(
+//       `SELECT COUNT(*) AS count FROM bookings
+//        WHERE room_id = ?
+//        AND (
+//          (checkin < ? AND checkout > ?)
+//        )`,
+//       [room_id, checkout, checkin]
+//     );
+
+//     const bookedCount = booked[0]?.count || 0;
+
+//     // STEP 2: Get room's total inventory
+//     const [roomData] = await userDBPool.query(
+//       `SELECT total_inventory FROM rooms WHERE id = ?`,
+//       [room_id]
+//     );
+
+//     const totalInventory = roomData[0]?.total_inventory || 0;
+
+//     // STEP 3: Check availability
+//     if (bookedCount >= totalInventory) {
+//       return res.status(400).json({ error: "Room is not available for the selected dates." });
+//     }
+
+//     // STEP 4: Proceed with booking
+//     const query = `
+//       INSERT INTO bookings (
+//         checkin, checkout, room_id, adults, children,
+//         full_name, email, mobile, gst_number, special_request,
+//         addons, subtotal, tax, total
+//       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//     `;
+
+//     await userDBPool.query(query, [
+//       checkin,
+//       checkout,
+//       room_id,
+//       adults,
+//       children,
+//       full_name,
+//       email,
+//       mobile,
+//       gst_number || null,
+//       special_request || null,
+//       JSON.stringify(addons || []),
+//       subtotal,
+//       tax,
+//       total
+//     ]);
+
+//     res.status(201).json({ message: "Booking successful!" });
+//   } catch (error) {
+//     console.error("Booking error:", error);
+//     res.status(500).json({ error: "Failed to confirm booking" });
+//   }
+// });
+
+
 app.post("/api/confirm-booking", async (req, res) => {
   try {
     const {
@@ -131,6 +209,7 @@ app.post("/api/confirm-booking", async (req, res) => {
       addons,
       subtotal,
       tax,
+      discount,
       total
     } = req.body;
 
@@ -138,9 +217,7 @@ app.post("/api/confirm-booking", async (req, res) => {
     const [booked] = await userDBPool.query(
       `SELECT COUNT(*) AS count FROM bookings
        WHERE room_id = ?
-       AND (
-         (checkin < ? AND checkout > ?)
-       )`,
+       AND ((checkin < ? AND checkout > ?))`,
       [room_id, checkout, checkin]
     );
 
@@ -159,7 +236,18 @@ app.post("/api/confirm-booking", async (req, res) => {
       return res.status(400).json({ error: "Room is not available for the selected dates." });
     }
 
-    // STEP 4: Proceed with booking
+    // ✅ STEP 4: Handle tax/discount fallback safely
+    let taxForDB = 0;
+
+    if (typeof tax !== 'undefined' && tax !== null) {
+      taxForDB = tax;
+    } else if (typeof discount !== 'undefined' && discount !== null) {
+      taxForDB = -1 * Number(discount);
+    } else {
+      taxForDB = 0; // default fallback
+    }
+
+    // STEP 5: Proceed with booking
     const query = `
       INSERT INTO bookings (
         checkin, checkout, room_id, adults, children,
@@ -181,7 +269,7 @@ app.post("/api/confirm-booking", async (req, res) => {
       special_request || null,
       JSON.stringify(addons || []),
       subtotal,
-      tax,
+      taxForDB, // ✅ guaranteed to never be NULL now
       total
     ]);
 
